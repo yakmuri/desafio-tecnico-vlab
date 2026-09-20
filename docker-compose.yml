@@ -28,6 +28,12 @@ services:
     volumes:
       - ./backend:/var/www/html
     ports: ["8000:8000"]
-
+  swagger:
+      image: swaggerapi/swagger-ui
+      environment:
+        SWAGGER_JSON: /spec/openapi.yaml
+      volumes:
+        - ./docs:/spec:ro
+      ports: ["8080:8080"]
 volumes:
   pgdata:

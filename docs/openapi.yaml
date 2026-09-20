@@ -1,0 +1,469 @@
+openapi: 3.0.3
+info:
+  title: API de Solicitações
+  version: 1.0.0
+  description: |
+    API REST para cadastro e acompanhamento de solicitações.
+
+    - Envie sempre o cabeçalho `Accept: application/json`.
+    - Nas requisições com corpo, envie também `Content-Type: application/json`.
+    - A API não exige autenticação.
+    - O `protocolo`, o `status` inicial (`RECEBIDA`) e as datas são gerados pela aplicação.
+
+    **Fluxo de status permitido**
+
+    | Status atual | Próximos status permitidos |
+    |---|---|
+    | `RECEBIDA` | `EM_ANALISE`, `CANCELADA` |
+    | `EM_ANALISE` | `AGENDADA`, `CANCELADA` |
+    | `AGENDADA` | `CONCLUIDA`, `CANCELADA` |
+    | `CONCLUIDA` | nenhum (status final) |
+    | `CANCELADA` | nenhum (status final) |
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Ambiente local (Docker Compose)
+tags:
+  - name: Solicitações
+    description: Cadastro, consulta e alteração de status.
+paths:
+  /solicitacoes:
+    get:
+      tags: [Solicitações]
+      operationId: listarSolicitacoes
+      summary: Listar solicitações
+      description: >-
+        Retorna as solicitações paginadas, da mais recente para a mais antiga.
+        Todos os filtros são opcionais e podem ser combinados.
+      parameters:
+        - name: status
+          in: query
+          description: Filtra pelo status atual.
+          schema:
+            $ref: '#/components/schemas/Status'
+        - name: categoria
+          in: query
+          description: Filtra pela categoria.
+          schema:
+            $ref: '#/components/schemas/Categoria'
+        - name: prioridade
+          in: query
+          description: Filtra pela prioridade.
+          schema:
+            $ref: '#/components/schemas/Prioridade'
+        - name: protocolo
+          in: query
+          description: Busca exata pelo protocolo.
+          schema:
+            type: string
+            maxLength: 30
+            example: SOL-20260920-PKICCN
+        - name: per_page
+          in: query
+          description: Quantidade de itens por página.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 15
+        - name: page
+          in: query
+          description: Número da página.
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: Lista paginada de solicitações.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoListResponse'
+        '422':
+          $ref: '#/components/responses/ErroValidacao'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+    post:
+      tags: [Solicitações]
+      operationId: criarSolicitacao
+      summary: Criar solicitação
+      description: |
+        Cria uma solicitação com status `RECEBIDA` e protocolo gerado automaticamente.
+
+        Quando a prioridade é `URGENTE`, o campo `justificativa_prioridade` é obrigatório.
+        Os campos `status` e `protocolo`, se enviados, são ignorados.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CriarSolicitacao'
+            examples:
+              comum:
+                summary: Prioridade comum
+                value:
+                  nome_solicitante: Maria Teste
+                  categoria: CONSULTA
+                  prioridade: BAIXA
+                  descricao: Consulta de rotina
+              urgente:
+                summary: Prioridade urgente (exige justificativa)
+                value:
+                  nome_solicitante: Joao Teste
+                  categoria: EXAME
+                  prioridade: URGENTE
+                  justificativa_prioridade: Paciente com risco
+                  descricao: Exame urgente
+      responses:
+        '201':
+          description: Solicitação criada com status `RECEBIDA`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoResponse'
+        '422':
+          description: Dados inválidos.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroValidacao'
+              examples:
+                urgenteSemJustificativa:
+                  summary: Prioridade URGENTE sem justificativa
+                  value:
+                    message: A justificativa da prioridade é obrigatória quando a prioridade é URGENTE.
+                    errors:
+                      justificativa_prioridade:
+                        - A justificativa da prioridade é obrigatória quando a prioridade é URGENTE.
+                categoriaInvalida:
+                  summary: Categoria fora dos valores permitidos
+                  value:
+                    message: A categoria deve ser CONSULTA, EXAME, VACINACAO ou OUTRO.
+                    errors:
+                      categoria:
+                        - A categoria deve ser CONSULTA, EXAME, VACINACAO ou OUTRO.
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+  /solicitacoes/{id}:
+    get:
+      tags: [Solicitações]
+      operationId: detalharSolicitacao
+      summary: Detalhar solicitação
+      parameters:
+        - $ref: '#/components/parameters/SolicitacaoId'
+      responses:
+        '200':
+          description: Solicitação encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoResponse'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+  /solicitacoes/{id}/status:
+    patch:
+      tags: [Solicitações]
+      operationId: alterarStatusSolicitacao
+      summary: Alterar o status
+      description: |
+        Move a solicitação para um dos próximos status permitidos (veja o fluxo na descrição da API).
+        Os status `CONCLUIDA` e `CANCELADA` são finais e não aceitam nova alteração.
+
+        A `data_atualizacao` é modificada a cada alteração.
+      parameters:
+        - $ref: '#/components/parameters/SolicitacaoId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AlterarStatus'
+            examples:
+              analise:
+                summary: Iniciar análise
+                value:
+                  status: EM_ANALISE
+      responses:
+        '200':
+          description: Status alterado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitacaoResponse'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+        '422':
+          description: Status inválido ou transição não permitida.
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ErroValidacao'
+                  - $ref: '#/components/schemas/ErroTransicao'
+              examples:
+                statusDesconhecido:
+                  summary: Valor de status inexistente
+                  value:
+                    message: O status deve ser RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA ou CANCELADA.
+                    errors:
+                      status:
+                        - O status deve ser RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA ou CANCELADA.
+                transicaoProibida:
+                  summary: RECEBIDA para AGENDADA
+                  value:
+                    message: 'Não é possível alterar o status de RECEBIDA para AGENDADA. Próximos status permitidos: EM_ANALISE, CANCELADA.'
+                    status_atual: RECEBIDA
+                    status_solicitado: AGENDADA
+                    status_permitidos: [EM_ANALISE, CANCELADA]
+                statusFinal:
+                  summary: Alteração de um status final
+                  value:
+                    message: A solicitação já está CONCLUIDA, que é um status final, e não permite nova alteração.
+                    status_atual: CONCLUIDA
+                    status_solicitado: CANCELADA
+                    status_permitidos: []
+        '500':
+          $ref: '#/components/responses/ErroInterno'
+components:
+  parameters:
+    SolicitacaoId:
+      name: id
+      in: path
+      required: true
+      description: Identificador da solicitação.
+      schema:
+        type: integer
+        format: int64
+        minimum: 1
+        example: 1
+  schemas:
+    Categoria:
+      type: string
+      enum: [CONSULTA, EXAME, VACINACAO, OUTRO]
+    Prioridade:
+      type: string
+      enum: [BAIXA, MEDIA, ALTA, URGENTE]
+    Status:
+      type: string
+      enum: [RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA, CANCELADA]
+    Solicitacao:
+      type: object
+      required:
+        - id
+        - protocolo
+        - nome_solicitante
+        - categoria
+        - prioridade
+        - status
+        - status_permitidos
+        - descricao
+        - justificativa_prioridade
+        - data_criacao
+        - data_atualizacao
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        protocolo:
+          type: string
+          description: Código único gerado pela aplicação.
+          example: SOL-20260920-PKICCN
+        nome_solicitante:
+          type: string
+          maxLength: 150
+          example: Maria Teste
+        categoria:
+          $ref: '#/components/schemas/Categoria'
+        prioridade:
+          $ref: '#/components/schemas/Prioridade'
+        status:
+          $ref: '#/components/schemas/Status'
+        status_permitidos:
+          type: array
+          readOnly: true
+          description: Próximos status possíveis a partir do status atual.
+          items:
+            $ref: '#/components/schemas/Status'
+          example: [EM_ANALISE, CANCELADA]
+        descricao:
+          type: string
+          maxLength: 2000
+          example: Consulta de rotina
+        justificativa_prioridade:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Preenchida obrigatoriamente quando a prioridade é `URGENTE`.
+          example: null
+        data_criacao:
+          type: string
+          format: date-time
+          example: '2026-09-20T20:16:07+00:00'
+        data_atualizacao:
+          type: string
+          format: date-time
+          example: '2026-09-20T20:16:07+00:00'
+    SolicitacaoResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Solicitacao'
+    SolicitacaoListResponse:
+      type: object
+      required: [data, links, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Solicitacao'
+        links:
+          type: object
+          properties:
+            first:
+              type: string
+              example: http://localhost:8000/api/v1/solicitacoes?page=1
+            last:
+              type: string
+              example: http://localhost:8000/api/v1/solicitacoes?page=1
+            prev:
+              type: string
+              nullable: true
+            next:
+              type: string
+              nullable: true
+        meta:
+          type: object
+          properties:
+            current_page:
+              type: integer
+              example: 1
+            from:
+              type: integer
+              nullable: true
+              example: 1
+            to:
+              type: integer
+              nullable: true
+              example: 1
+            last_page:
+              type: integer
+              example: 1
+            per_page:
+              type: integer
+              example: 15
+            total:
+              type: integer
+              example: 1
+            path:
+              type: string
+              example: http://localhost:8000/api/v1/solicitacoes
+            links:
+              type: array
+              items:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    nullable: true
+                  label:
+                    type: string
+                  page:
+                    type: integer
+                    nullable: true
+                  active:
+                    type: boolean
+    CriarSolicitacao:
+      type: object
+      required: [nome_solicitante, categoria, prioridade, descricao]
+      properties:
+        nome_solicitante:
+          type: string
+          maxLength: 150
+        categoria:
+          $ref: '#/components/schemas/Categoria'
+        prioridade:
+          $ref: '#/components/schemas/Prioridade'
+        descricao:
+          type: string
+          maxLength: 2000
+        justificativa_prioridade:
+          type: string
+          nullable: true
+          maxLength: 2000
+          description: Obrigatória quando `prioridade` é `URGENTE`.
+    AlterarStatus:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/Status'
+    ErroValidacao:
+      type: object
+      description: >-
+        Erro de validação. `message` resume o primeiro erro e `errors` traz
+        todos os campos com problema.
+      required: [message, errors]
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    ErroTransicao:
+      type: object
+      description: Tentativa de alterar o status fora do fluxo permitido.
+      required: [message, status_atual, status_solicitado, status_permitidos]
+      properties:
+        message:
+          type: string
+        status_atual:
+          $ref: '#/components/schemas/Status'
+        status_solicitado:
+          $ref: '#/components/schemas/Status'
+        status_permitidos:
+          type: array
+          items:
+            $ref: '#/components/schemas/Status'
+    Erro:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+  responses:
+    ErroValidacao:
+      description: Parâmetros inválidos.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErroValidacao'
+          example:
+            message: O filtro status deve ser RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA ou CANCELADA.
+            errors:
+              status:
+                - O filtro status deve ser RECEBIDA, EM_ANALISE, AGENDADA, CONCLUIDA ou CANCELADA.
+    NaoEncontrado:
+      description: Solicitação inexistente.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            message: Recurso não encontrado.
+    ErroInterno:
+      description: >-
+        Falha inesperada. O detalhe do erro não é exposto na resposta e fica
+        registrado no log da aplicação.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+          example:
+            message: Erro interno do servidor. Tente novamente mais tarde.
