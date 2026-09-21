@@ -3,10 +3,11 @@
 namespace App\Http\Resources;
 
 use App\Enums\Status;
+use App\Models\Solicitacao;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** @mixin \App\Models\Solicitacao */
+/** @mixin Solicitacao */
 class SolicitacaoResource extends JsonResource
 {
     public function toArray(Request $request): array

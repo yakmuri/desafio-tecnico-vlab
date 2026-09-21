@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Route;
 Route::pattern('solicitacao', '[0-9]{1,18}');
 
 Route::prefix('v1')->group(function () {
+    Route::get('solicitacoes/resumo', [SolicitacaoController::class, 'resumo']);
+
     Route::apiResource('solicitacoes', SolicitacaoController::class)
         ->only(['index', 'store', 'show'])
         ->parameters(['solicitacoes' => 'solicitacao']);

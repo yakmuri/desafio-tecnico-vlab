@@ -17,7 +17,7 @@ class TransicaoStatusInvalidaException extends RuntimeException
         $mensagem = $permitidos === []
             ? "A solicitação já está {$atual->value}, que é um status final, e não permite nova alteração."
             : "Não é possível alterar o status de {$atual->value} para {$novo->value}. "
-                . 'Próximos status permitidos: ' . implode(', ', $permitidos) . '.';
+                .'Próximos status permitidos: '.implode(', ', $permitidos).'.';
 
         parent::__construct($mensagem);
     }

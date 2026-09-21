@@ -12,7 +12,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
-
+  web:
+    image: node:22-alpine
+    user: "1000:1000"
+    working_dir: /app
+    environment:
+      HOME: /tmp
+    command: sh -c "[ -x node_modules/.bin/vite ] || npm install; npm run dev -- --host 0.0.0.0"
+    depends_on: [api]
+    volumes:
+      - ./frontend:/app
+    ports: ["5173:5173"]
   api:
     build: ./backend
     depends_on:

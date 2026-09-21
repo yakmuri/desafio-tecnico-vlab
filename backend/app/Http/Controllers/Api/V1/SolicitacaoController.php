@@ -15,9 +15,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SolicitacaoController extends Controller
 {
-    public function __construct(private readonly SolicitacaoService $service)
-    {
-    }
+    public function __construct(private readonly SolicitacaoService $service) {}
 
     public function index(ListSolicitacoesRequest $request): AnonymousResourceCollection
     {
@@ -31,6 +29,11 @@ class SolicitacaoController extends Controller
             ->withQueryString();
 
         return SolicitacaoResource::collection($solicitacoes);
+    }
+
+    public function resumo(): JsonResponse
+    {
+        return response()->json(['data' => $this->service->resumo()]);
     }
 
     public function store(StoreSolicitacaoRequest $request): JsonResponse

@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 class Solicitacao extends Model
 {
     public const CREATED_AT = 'data_criacao';
+
     public const UPDATED_AT = 'data_atualizacao';
 
     // Sem isso o Laravel tentaria "solicitacaos" (plural em inglês).
@@ -56,7 +57,7 @@ class Solicitacao extends Model
     public static function gerarProtocolo(): string
     {
         do {
-            $protocolo = 'SOL-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+            $protocolo = 'SOL-'.now()->format('Ymd').'-'.strtoupper(Str::random(6));
         } while (static::where('protocolo', $protocolo)->exists());
 
         return $protocolo;
