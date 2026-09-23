@@ -103,25 +103,53 @@ docker compose exec web npm run format          # corrige a formatação
 ```
 
 ## Estrutura do repositório
+.
 ├── docker-compose.yml
-├── docs/ openapi.yaml, API.md, banco-de-dados.md
+├── .env.example
+├── README.md
+├── docs/
+│ ├── openapi.yaml especificação OpenAPI da API
+│ ├── API.md documentação da API em prosa
+│ └── banco-de-dados.md modelagem, constraints e índices
+│
 ├── backend/ Laravel (API REST)
+│ ├── Dockerfile
+│ ├── docker/entrypoint.sh instala dependências, roda migrations, sobe o servidor
 │ ├── app/
 │ │ ├── Enums/ Categoria, Prioridade, Status (com o fluxo de transições)
-│ │ ├── Http/Controllers/Api/V1/
-│ │ ├── Http/Requests/ validação (FormRequests)
-│ │ ├── Http/Resources/ formatação das respostas JSON
-│ │ ├── Models/
-│ │ └── Services/ regras de negócio (troca de status, resumo)
-│ ├── database/migrations/
-│ └── tests/
-└── frontend/ React + TypeScript
+│ │ ├── Exceptions/ TransicaoStatusInvalidaException (erro 422 da troca de status)
+│ │ ├── Http/
+│ │ │ ├── Controllers/Api/V1/SolicitacaoController.php
+│ │ │ ├── Requests/ validação (FormRequests): criar, listar, alterar status
+│ │ │ └── Resources/ SolicitacaoResource (formato do JSON de resposta)
+│ │ ├── Models/Solicitacao.php
+│ │ └── Services/ SolicitacaoService (troca de status, resumo)
+│ ├── bootstrap/app.php rotas, erros da API sempre em JSON, sem detalhe interno
+│ ├── database/migrations/ esquema da tabela solicitacoes e seus índices
+│ ├── routes/api.php
+│ └── tests/Unit/ StatusTransicaoTest (regra do fluxo de status)
+│
+└── frontend/ React + TypeScript (Vite)
+├── vite.config.ts proxy /api -> api:8000
+├── vitest.config.ts
 └── src/
-├── api/ cliente HTTP e erro padronizado
-├── app/ layout, rotas, configuração do TanStack Query
-├── shared/ componentes e hooks genéricos
-└── features/solicitacoes/ tipos, chamadas à API, hooks, validação,
-componentes e páginas do domínio
+├── api/ cliente HTTP (axios) e erro padronizado (ApiError)
+├── app/ layout, rotas e configuração do TanStack Query
+├── shared/ componentes e hooks genéricos (estados, paginação,
+│ campo de formulário)
+├── features/solicitacoes/ tudo do domínio:
+│ ├── types.ts contrato com a API
+│ ├── api.ts chamadas HTTP da feature
+│ ├── hooks.ts estados assíncronos (TanStack Query)
+│ ├── schema.ts validação do formulário (Zod)
+│ ├── filtros.ts filtros e paginação na URL
+│ ├── components/ StatusBadge, FiltrosSolicitacaoForm, SolicitacaoForm,
+│ │ AlterarStatus, tabela e cartões da listagem etc.
+│ ├── pages/ DashboardPage, ListaSolicitacoesPage,
+│ │ NovaSolicitacaoPage, DetalheSolicitacaoPage
+│ └── *.test.ts(x) testes de comportamento (Vitest + Testing Library)
+└── tests/setup.ts
+
 
 ## Uso de IA no desenvolvimento
 
