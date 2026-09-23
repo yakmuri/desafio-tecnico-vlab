@@ -103,3 +103,38 @@ docker compose exec web npm run format          # corrige a formatação
 ```
 
 ## Estrutura do repositório
+├── docker-compose.yml
+├── docs/ openapi.yaml, API.md, banco-de-dados.md
+├── backend/ Laravel (API REST)
+│ ├── app/
+│ │ ├── Enums/ Categoria, Prioridade, Status (com o fluxo de transições)
+│ │ ├── Http/Controllers/Api/V1/
+│ │ ├── Http/Requests/ validação (FormRequests)
+│ │ ├── Http/Resources/ formatação das respostas JSON
+│ │ ├── Models/
+│ │ └── Services/ regras de negócio (troca de status, resumo)
+│ ├── database/migrations/
+│ └── tests/
+└── frontend/ React + TypeScript
+└── src/
+├── api/ cliente HTTP e erro padronizado
+├── app/ layout, rotas, configuração do TanStack Query
+├── shared/ componentes e hooks genéricos
+└── features/solicitacoes/ tipos, chamadas à API, hooks, validação,
+componentes e páginas do domínio
+
+## Uso de IA no desenvolvimento
+
+Este projeto foi desenvolvido com apoio de IA (Claude, da Anthropic), usada para:
+
+- Estruturar os arquivos e pastas do backend (Laravel) e do frontend (React), seguindo
+  convenções de organização por domínio.
+- Gerar comandos repetitivos de configuração (Docker, migrations, criação de arquivos),
+  acelerando a montagem do ambiente.
+- Estilizar as páginas do frontend em CSS, incluindo responsividade e o layout com
+  tabela/cartões.
+- Implementar os testes automatizados (PHPUnit no backend e Vitest/React Testing Library
+  no frontend), área em que eu não tinha familiaridade prévia.
+
+Todo o código gerado foi revisado, testado manualmente na aplicação rodando localmente e
+ajustado ao longo do desenvolvimento antes de ser incorporado ao projeto.
