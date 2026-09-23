@@ -103,7 +103,7 @@ docker compose exec web npm run format          # corrige a formatação
 ```
 
 ## Estrutura do repositório
-.
+```.
 ├── docker-compose.yml
 ├── .env.example
 ├── README.md
@@ -149,8 +149,7 @@ docker compose exec web npm run format          # corrige a formatação
 │ │ NovaSolicitacaoPage, DetalheSolicitacaoPage
 │ └── *.test.ts(x) testes de comportamento (Vitest + Testing Library)
 └── tests/setup.ts
-
-
+```
 ## Uso de IA no desenvolvimento
 
 Este projeto foi desenvolvido com apoio de IA (Claude, da Anthropic), usada para:
